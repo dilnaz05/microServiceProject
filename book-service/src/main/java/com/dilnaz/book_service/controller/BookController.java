@@ -6,51 +6,28 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-
 @RestController
 @RequestMapping("/books")
 public class BookController {
 
-    private final BookService service;
+    private final BookService bookService;
 
-    public BookController(BookService service) {
-        this.service = service;
+    public BookController(BookService bookService) {
+        this.bookService = bookService;
     }
 
-    // CREATE
-    @PostMapping
-    public Book create(@RequestBody Book book) {
-        return service.create(book);
-    }
-
-    // READ ALL
     @GetMapping
-    public List<Book> getAll() {
-        return service.getAll();
+    public List<Book> getBooks() {
+        return bookService.getAllBooks();
     }
 
-    // READ BY ID
+    @PostMapping
+    public Book createBook(@RequestBody Book book) {
+        return bookService.createBook(book);
+    }
+
     @GetMapping("/{id}")
-    public Book getById(@PathVariable Long id) {
-        return service.getById(id);
-    }
-
-    // UPDATE
-    @PutMapping("/{id}")
-    public Book update(@PathVariable Long id, @RequestBody Book book) {
-        return service.update(id, book);
-    }
-
-    // DELETE
-    @DeleteMapping("/{id}")
-    public String delete(@PathVariable Long id) {
-        service.delete(id);
-        return "Book deleted successfully";
-    }
-
-    // HEALTH CHECK
-    @GetMapping("/health")
-    public String health() {
-        return "Book Service OK";
+    public Book getBook(@PathVariable Long id) {
+        return bookService.getAllBooks().stream().filter(b -> b.getId().equals(id)).findFirst().orElse(null);
     }
 }

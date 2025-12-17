@@ -1,2 +1,6 @@
 server:
   port: 8080
+
+services:
+  book: http://localhost:8082
+  file: http://localhost:8081

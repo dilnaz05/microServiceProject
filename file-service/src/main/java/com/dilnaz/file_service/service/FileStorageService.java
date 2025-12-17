@@ -1,5 +1,6 @@
 package com.dilnaz.file_service.service;
 
+import io.minio.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
@@ -7,44 +8,52 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-
 @Service
 public class FileStorageService {
 
-    private final Path uploadDir;
+    private final MinioClient minioClient;
+    private static final String BUCKET = "uploads";
 
-    public FileStorageService(@Value("${file.upload-dir}") String uploadDir) {
-        this.uploadDir = Paths.get(uploadDir);
+    public FileStorageService(MinioClient minioClient) {
+        this.minioClient = minioClient;
+    }
 
-        try {
-            if (Files.notExists(this.uploadDir)) {
-                Files.createDirectories(this.uploadDir);
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(
-                    "Cannot initialize upload directory: " + this.uploadDir, e
+    public String uploadFile(MultipartFile file) throws Exception {
+
+        boolean found = minioClient.bucketExists(
+                BucketExistsArgs.builder().bucket(BUCKET).build()
+        );
+
+        if (!found) {
+            minioClient.makeBucket(
+                    MakeBucketArgs.builder().bucket(BUCKET).build()
             );
         }
+
+        minioClient.putObject(
+                PutObjectArgs.builder()
+                        .bucket(BUCKET)
+                        .object(file.getOriginalFilename())
+                        .stream(file.getInputStream(), file.getSize(), -1)
+                        .contentType(file.getContentType())
+                        .build()
+        );
+
+        return file.getOriginalFilename();
     }
 
-    public String upload(MultipartFile file) {
-        try {
-            Path target = uploadDir.resolve(file.getOriginalFilename());
-            Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
-            return target.getFileName().toString();
-        } catch (IOException e) {
-            throw new RuntimeException("File upload failed", e);
-        }
-    }
-
-    public Resource download(String filename) throws MalformedURLException {
-        Path filePath = uploadDir.resolve(filename).normalize();
-        return new UrlResource(filePath.toUri());
+    public InputStream getFile(String filename) throws Exception {
+        return minioClient.getObject(
+                GetObjectArgs.builder()
+                        .bucket(BUCKET)
+                        .object(filename)
+                        .build()
+        );
     }
 }
-

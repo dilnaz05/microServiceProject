@@ -1,72 +1,84 @@
 package com.dilnaz.api_gateway.controller;
 
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.http.*;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
+import org.springframework.web.reactive.function.BodyInserters;
+import org.springframework.web.reactive.function.client.WebClient;
 
+import org.springframework.http.codec.multipart.FilePart;
+
+import reactor.core.publisher.Mono;
 @RestController
 @RequestMapping("/gateway")
 public class GatewayController {
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final WebClient webClient;
 
-    private final String BOOK_SERVICE = "http://localhost:8082";
-    private final String FILE_SERVICE = "http://localhost:8081";
+    @Value("${services.book}")
+    private String BOOK_SERVICE;
 
-    // ---------------- Book Service passthrough ----------------
+    @Value("${services.file}")
+    private String FILE_SERVICE;
 
-    @GetMapping("/books")
-    public ResponseEntity<?> getBooks() {
-        return restTemplate.getForEntity(BOOK_SERVICE + "/books", Object.class);
+    public GatewayController(WebClient webClient) {
+        this.webClient = webClient;
     }
 
-    @GetMapping("/books/{id}")
-    public ResponseEntity<?> getBook(@PathVariable Long id) {
-        return restTemplate.getForEntity(BOOK_SERVICE + "/books/" + id, Object.class);
+    // ---------------- BOOK SERVICE ----------------
+
+    @GetMapping("/books")
+    public Mono<Object> getBooks() {
+        return webClient.get()
+                .uri(BOOK_SERVICE + "/books")
+                .retrieve()
+                .bodyToMono(Object.class);
     }
 
     @PostMapping("/books")
-    public ResponseEntity<?> createBook(@RequestBody Object book) {
-        return restTemplate.postForEntity(BOOK_SERVICE + "/books", book, Object.class);
+    public Mono<Object> createBook(@RequestBody Object book) {
+        return webClient.post()
+                .uri(BOOK_SERVICE + "/books")
+                .bodyValue(book)
+                .retrieve()
+                .bodyToMono(Object.class);
     }
 
-    // ---------------- File Service passthrough ----------------
+    @GetMapping("/books/{id}")
+    public Mono<Object> getBook(@PathVariable Long id) {
+        return webClient.get()
+                .uri(BOOK_SERVICE + "/books/" + id)
+                .retrieve()
+                .bodyToMono(Object.class);
+    }
 
-    @PostMapping("/files/upload")
-    public ResponseEntity<?> uploadFile(@RequestParam("file") MultipartFile file) throws IOException {
+    // ---------------- FILE SERVICE ----------------
 
-        // Файлды RestTemplate Multipart форматына дайындау
-        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-        ByteArrayResource resource = new ByteArrayResource(file.getBytes()) {
-            @Override
-            public String getFilename() {
-                return file.getOriginalFilename();
-            }
-        };
-        body.add("file", resource);
+    @PostMapping(value = "/files/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public Mono<Object> uploadFile(@RequestPart("file") Mono<FilePart> file) {
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-
-        HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
-
-        String url = FILE_SERVICE + "/files/upload";
-        return restTemplate.postForEntity(url, requestEntity, String.class);
+        return file.flatMap(f ->
+                webClient.post()
+                        .uri(FILE_SERVICE + "/files/upload")
+                        .contentType(MediaType.MULTIPART_FORM_DATA)
+                        .body(BodyInserters.fromMultipartData("file", f))
+                        .retrieve()
+                        .bodyToMono(Object.class)
+        );
     }
 
     @GetMapping("/files/download/{filename}")
-    public ResponseEntity<?> downloadFile(@PathVariable String filename) {
-        String url = FILE_SERVICE + "/files/download/" + filename;
-        return restTemplate.getForEntity(url, Object.class);
+    public Mono<ResponseEntity<byte[]>> downloadFile(@PathVariable String filename) {
+
+        return webClient.get()
+                .uri(FILE_SERVICE + "/files/download/" + filename)
+                .retrieve()
+                .toEntity(byte[].class);
     }
 
-    // ---------------- Health check ----------------
+    // ---------------- HEALTH ----------------
 
     @GetMapping("/health")
     public String health() {

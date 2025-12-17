@@ -10,53 +10,37 @@ import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-
 
 @RestController
 @RequestMapping("/files")
 public class FileController {
 
-    private final FileStorageService service;
+    private final FileStorageService fileStorageService;
 
-    public FileController(FileStorageService service) {
-        this.service = service;
+    public FileController(FileStorageService fileStorageService) {
+        this.fileStorageService = fileStorageService;
     }
 
     @PostMapping("/upload")
-    public ResponseEntity<String> upload(@RequestParam("file") MultipartFile file) {
-        String filename = service.upload(file);
-        return ResponseEntity.ok("Uploaded: " + filename);
+    public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file) throws Exception {
+        String filename = fileStorageService.uploadFile(file);
+        return ResponseEntity.ok(filename);
     }
 
-    @GetMapping("/download/{filename:.+}")
-    public ResponseEntity<Resource> download(@PathVariable String filename) {
-        try {
-            Path filePath = Paths.get("uploads").resolve(filename).normalize();
+    @GetMapping("/download/{filename}")
+    public ResponseEntity<InputStreamResource> downloadFile(@PathVariable String filename) throws Exception {
 
-            if (!Files.exists(filePath)) {
-                return ResponseEntity.notFound().build();
-            }
+        InputStream stream = fileStorageService.getFile(filename);
 
-            InputStreamResource resource =
-                    new InputStreamResource(Files.newInputStream(filePath));
-
-            return ResponseEntity.ok()
-                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                    .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "attachment; filename=\"" + filename + "\"")
-                    .body(resource);
-
-        } catch (IOException e) {
-            return ResponseEntity.internalServerError().build();
-        }
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + filename + "\"")
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .body(new InputStreamResource(stream));
     }
 
-    @GetMapping("/health")
-    public String health() {
-        return "File Service OK";
-    }
 }
-
