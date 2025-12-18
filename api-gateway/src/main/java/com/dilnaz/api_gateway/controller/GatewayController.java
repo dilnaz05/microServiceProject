@@ -30,7 +30,7 @@ public class GatewayController {
 
     private final WebClient webClient;
 
-    @Value("${services.book}")
+    @Value("http://localhost:8081")
     private String BOOK_SERVICE;
 
     @Value("${services.file}")

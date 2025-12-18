@@ -7,7 +7,7 @@ spring:
       routes:
         # Маршрут для book-service (убедитесь, что порт верный)
         - id: book-service-route
-          uri: http://localhost:8083 # УКАЖИТЕ ПРАВИЛЬНЫЙ ПОРТ
+          uri: http://localhost:8081 # УКАЖИТЕ ПРАВИЛЬНЫЙ ПОРТ
           predicates:
             - Path=/api/books/**
 
@@ -26,5 +26,5 @@ spring:
 # Эти значения больше не используются контроллером для файлов,
 # но могут быть полезны для других целей
 services:
-  book: http://localhost:8083
+  book: http://localhost:8081
   file: http://localhost:8082
