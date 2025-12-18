@@ -3,6 +3,7 @@ package com.dilnaz.api_gateway.controller;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.web.bind.annotation.*;
 
 import org.springframework.web.reactive.function.BodyInserters;
@@ -11,6 +12,8 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.http.codec.multipart.FilePart;
 
 import reactor.core.publisher.Mono;
+
+
 @RestController
 @RequestMapping("/gateway")
 public class GatewayController {
@@ -57,17 +60,20 @@ public class GatewayController {
     // ---------------- FILE SERVICE ----------------
 
     @PostMapping(value = "/files/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public Mono<Object> uploadFile(@RequestPart("file") Mono<FilePart> file) {
+    public Mono<String> uploadFile(@RequestPart("file") FilePart filePart) {
 
-        return file.flatMap(f ->
-                webClient.post()
-                        .uri(FILE_SERVICE + "/files/upload")
-                        .contentType(MediaType.MULTIPART_FORM_DATA)
-                        .body(BodyInserters.fromMultipartData("file", f))
-                        .retrieve()
-                        .bodyToMono(Object.class)
-        );
+        System.out.println("Filename: " + filePart.filename());
+        System.out.println("Content-Type: " + filePart.headers().getContentType());
+
+        return webClient.post()
+                .uri(FILE_SERVICE + "/files/upload")
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .body(BodyInserters.fromMultipartData("file", filePart))
+                .retrieve()
+                .bodyToMono(String.class);
     }
+
+
 
     @GetMapping("/files/download/{filename}")
     public Mono<ResponseEntity<byte[]>> downloadFile(@PathVariable String filename) {

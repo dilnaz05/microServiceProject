@@ -1,0 +1,100 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-postgres}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-mysecretpassword}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+  redis:
+    image: redis:7
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - app-network
+
+  rabbitmq:
+    image: rabbitmq:3.12-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"  # AMQP port
+      - "15672:15672" # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-guest}
+    networks:
+      - app-network
+
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000" # API port
+      - "9001:9001" # Console port
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+    volumes:
+      - minio_data:/data
+    networks:
+      - app-network
+
+#
+#  file-service:
+#    build:
+#      context: .
+#      dockerfile: file-service/Dockerfile
+#    container_name: file-service
+#    depends_on:
+#      - postgres
+#      - redis
+#      - rabbitmq
+#      - minio
+#    environment:
+#      DB_HOST: postgres
+#      DB_PORT: 5432
+#      DB_NAME: ${DB_NAME:-file_metadata_db}
+#      DB_USER: ${DB_USER:-user}
+#      DB_PASSWORD: ${DB_PASSWORD:-password}
+#      REDIS_HOST: redis
+#      RABBITMQ_HOST: rabbitmq
+#      MINIO_HOST: minio
+#      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+#      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+#    networks:
+#      - app-network
+
+#  api-gateway:
+#    build:
+#      context: .
+#      dockerfile: api-gateway/Dockerfile
+#    container_name: api-gateway
+#    depends_on:
+#      - file-service
+#      - keycloak
+#    ports:
+#      - "8080:8080"
+#    environment:
+#      # This points to file-service inside the Docker network
+#      FILE_SERVICE_HOST: file-service
+#    networks:
+#      - app-network
+
+volumes:
+  postgres_data:
+  minio_data:
+
+networks:
+  app-network:
+    driver: bridge
