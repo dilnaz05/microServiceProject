@@ -1,6 +1,11 @@
 package com.dilnaz.api_gateway.controller;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.MultipartBodyBuilder;
@@ -12,6 +17,11 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.http.codec.multipart.FilePart;
 
 import reactor.core.publisher.Mono;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 
 @RestController
@@ -57,16 +67,20 @@ public class GatewayController {
                 .bodyToMono(Object.class);
     }
 
+    /*
     // ---------------- FILE SERVICE ----------------
+    // ЭТИ МЕТОДЫ ЗАКОММЕНТИРОВАНЫ, ТАК КАК ОБРАБОТКА ФАЙЛОВ
+    // ТЕПЕРЬ ВЫПОЛНЯЕТСЯ НАПРЯМУЮ ЧЕРЕЗ КОНФИГУРАЦИЮ ШЛЮЗА В application.yml
+    // ЭТО БОЛЕЕ НАДЕЖНЫЙ СПОСОБ ПРОКСИРОВАНИЯ ФАЙЛОВ.
 
-    @PostMapping(value = "/files/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/file/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public Mono<String> uploadFile(@RequestPart("file") FilePart filePart) {
 
         System.out.println("Filename: " + filePart.filename());
         System.out.println("Content-Type: " + filePart.headers().getContentType());
 
         return webClient.post()
-                .uri(FILE_SERVICE + "/files/upload")
+                .uri(FILE_SERVICE + "/file/upload")
                 .contentType(MediaType.MULTIPART_FORM_DATA)
                 .body(BodyInserters.fromMultipartData("file", filePart))
                 .retrieve()
@@ -75,14 +89,15 @@ public class GatewayController {
 
 
 
-    @GetMapping("/files/download/{filename}")
+    @GetMapping("/file/download/{filename}")
     public Mono<ResponseEntity<byte[]>> downloadFile(@PathVariable String filename) {
 
         return webClient.get()
-                .uri(FILE_SERVICE + "/files/download/" + filename)
+                .uri(FILE_SERVICE + "/file/download/" + filename)
                 .retrieve()
                 .toEntity(byte[].class);
     }
+    */
 
     // ---------------- HEALTH ----------------
 

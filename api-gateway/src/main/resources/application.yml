@@ -1,6 +1,30 @@
 server:
   port: 8080
 
+spring:
+  cloud:
+    gateway:
+      routes:
+        # Маршрут для book-service (убедитесь, что порт верный)
+        - id: book-service-route
+          uri: http://localhost:8083 # УКАЖИТЕ ПРАВИЛЬНЫЙ ПОРТ
+          predicates:
+            - Path=/api/books/**
+
+        # Маршрут для file-service, который напрямую проксирует файлы
+        - id: file-service-route
+          uri: http://localhost:8082
+          predicates:
+            - Path=/api/files/** # Шлюз слушает этот публичный путь
+          filters:
+            # Фильтр преобразует публичный путь в приватный путь сервиса
+            # /api/files/upload -> /file/upload
+            - RewritePath=/api/files/(?<segment>.*), /file/${segment}
+  application:
+    name: api-gateway
+
+# Эти значения больше не используются контроллером для файлов,
+# но могут быть полезны для других целей
 services:
-  book: http://localhost:8082
-  file: http://localhost:8081
+  book: http://localhost:8083
+  file: http://localhost:8082
